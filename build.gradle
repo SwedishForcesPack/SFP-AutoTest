@@ -1,0 +1,60 @@
+plugins {
+  id 'org.ajoberstar.grgit' version '1.5.1'
+}
+
+def armaDir = 'D:\\SteamLibrary\\steamapps\\common\\Arma 3\\'
+def armaMods = [
+  '@cba_a3',
+  '@sfp_nightly',
+]
+
+def missionDir = 'mrg_objectDumper.VR'
+def missionRepo = 'https://github.com/SwedishForcesPack/mrg_objectDumper.VR.git'
+
+def autotestFile = 'autotest.cfg'
+
+task cloneTestMission << {
+  delete missionDir
+  def grgit = org.ajoberstar.grgit.Grgit.clone(dir: missionDir, uri: missionRepo)
+}
+
+task setupTestMission << {
+  def spawnSqf = new File("${missionDir}/mrg_objectDumper.sqf")
+  spawnSqf.append('''
+  endMission "END1";
+  ''')
+}
+setupTestMission.dependsOn(cloneTestMission)
+
+task generateAutotestFile << {
+  String missionPath = new File(missionDir).getAbsolutePath()
+  String fileContent = """
+  class TestMissions
+  {
+    class TestCase01
+    {
+      campaign = \"\";
+      mission = \"${missionPath}\";
+    };
+  };
+  """.stripIndent()
+  new File(autotestFile).write(fileContent)
+}
+
+task runAutotest << {
+  String armaExecutable = "${armaDir}/arma3.exe"
+  String autotestFilePath = new File(autotestFile).getAbsolutePath()
+  String autotest = "-autotest=${autotestFilePath}"
+  String mods = "-mod=${armaMods.join(';')}"
+
+  def pb = new ProcessBuilder([
+    armaExecutable,
+    autotest,
+    mods,
+    "-world=empty",
+    "-noSplash",
+    "-window",
+  ]).start().waitFor()
+}
+runAutotest.dependsOn(setupTestMission)
+runAutotest.dependsOn(generateAutotestFile)
