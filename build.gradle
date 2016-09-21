@@ -1,6 +1,19 @@
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath  'commons-io:commons-io:2.5'
+  }
+}
+
 plugins {
   id 'org.ajoberstar.grgit' version '1.5.1'
+  id 'de.undercouch.download' version '3.1.1'
 }
+
+import org.apache.commons.io.FileUtils;
 
 def armaMods = [
   '@cba_a3',
@@ -85,6 +98,32 @@ task locateArma3 << {
   }
 }
 
+task downloadSFP << {
+  delete 'archive'
+  delete 'archive.zip'
+  download {
+    src 'http://jenkins.anrop.se/job/sfp/lastSuccessfulBuild/artifact/*zip*/archive.zip'
+    dest 'tmp'
+  }
+}
+
+task extractSFP(dependsOn: downloadSFP, type: Copy) {
+  outputs.upToDateWhen { false }  
+  from zipTree(file('tmp/archive.zip'))
+  into file("tmp")
+}
+
+task moveSFP(dependsOn: [extractSFP, locateArma3]) << {
+  File source = file("tmp/archive/@sfp")
+  File target = file("${project.ext.arma3dir}/@sfp_nightly")
+  delete target
+  FileUtils.moveDirectory(source, target);
+}
+
+task downloadLatestSFP(dependsOn: moveSFP) {
+
+}
+
 task runAutotest << {
   String armaExecutable = "${project.ext.arma3dir}/arma3.exe"
   String autotestFilePath = new File(autotestFile).getAbsolutePath()
@@ -104,3 +143,4 @@ task runAutotest << {
 runAutotest.dependsOn(setupTestMission)
 runAutotest.dependsOn(generateAutotestFile)
 runAutotest.dependsOn(locateArma3)
+runAutotest.mustRunAfter(downloadLatestSFP)
