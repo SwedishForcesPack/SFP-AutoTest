@@ -19,5 +19,8 @@ autotest.cfg
 # Test mission folder
 mrg_objectDumper.VR
 
+# Logs directory
+logs
+
 # Downloads from Jenkins
 tmp

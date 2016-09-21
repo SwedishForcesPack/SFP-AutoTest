@@ -124,6 +124,16 @@ task downloadLatestSFP(dependsOn: moveSFP) {
 
 }
 
+task copyLogFile << {
+  def logsDir = 'logs'
+  def localAppData = System.getenv('LOCALAPPDATA')
+  def logFiles = fileTree("${localAppData}/Arma 3").include('*.rpt').getFiles()
+  File source = logFiles.sort().last()
+  delete logsDir
+  mkdir logsDir
+  FileUtils.copyFileToDirectory(source, file(logsDir))
+}
+
 task runAutotest << {
   String armaExecutable = "${project.ext.arma3dir}/arma3.exe"
   String autotestFilePath = new File(autotestFile).getAbsolutePath()
