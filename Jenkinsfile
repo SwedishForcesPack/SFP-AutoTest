@@ -1,4 +1,8 @@
 node ('arma') {
+  stage('Checkout from Git') {
+    checkout scm
+  }
+
   stage('Download latest SFP') {
     bat 'gradlew downloadLatestSFP'
   }
