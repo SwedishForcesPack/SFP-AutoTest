@@ -150,7 +150,7 @@ runAutotest.mustRunAfter(downloadLatestSFP)
 task copyLogFile << {
   def logsDir = 'logs'
   def localAppData = System.getenv('LOCALAPPDATA')
-  def logFiles = fileTree("${localAppData}/Arma 3").include('*.rpt').getFiles()
+  def logFiles = file("${localAppData}/Arma 3").listFiles().findAll { it.name.startsWith('arma3_') && it.name.endsWith('.rpt') }
   File source = logFiles.sort().last()
   delete logsDir
   mkdir logsDir
