@@ -52,6 +52,7 @@ task runAutotest << {
     autotest,
     mods,
     "-world=empty",
+    "-noPause",
     "-noSplash",
     "-window",
   ]).start().waitFor()
