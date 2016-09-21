@@ -99,6 +99,7 @@ task locateArma3 << {
 }
 
 task downloadSFP << {
+  delete 'tmp'
   mkdir 'tmp'
   delete 'tmp/archive'
   delete 'tmp/archive.zip'
