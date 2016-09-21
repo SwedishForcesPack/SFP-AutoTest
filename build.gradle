@@ -2,7 +2,6 @@ plugins {
   id 'org.ajoberstar.grgit' version '1.5.1'
 }
 
-def armaDir = 'D:\\SteamLibrary\\steamapps\\common\\Arma 3\\'
 def armaMods = [
   '@cba_a3',
   '@sfp_nightly',
@@ -12,6 +11,13 @@ def missionDir = 'mrg_objectDumper.VR'
 def missionRepo = 'https://github.com/SwedishForcesPack/mrg_objectDumper.VR.git'
 
 def autotestFile = 'autotest.cfg'
+
+def registryPaths = [
+  'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
+  'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
+  'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
+  'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
+]
 
 task cloneTestMission << {
   delete missionDir
@@ -41,8 +47,46 @@ task generateAutotestFile << {
   new File(autotestFile).write(fileContent)
 }
 
+task locateArma3 << {
+  def found = false;
+  def registryDivider = "    "
+
+  registryPaths.each { String query ->
+    Process process = Runtime.getRuntime().exec(query);
+
+    InputStream is = process.getInputStream();
+    StringBuilder sw = new StringBuilder();
+
+    try
+    {
+      int c;
+      while ((c = is.read()) != -1) {
+        sw.append((char)c);
+      }
+    }
+    catch (IOException e)
+    { 
+    }
+
+    String output = sw.toString();
+
+    if(!output.contains(registryDivider)) {
+      return null;
+    }
+
+    // Parse out the value
+    String[] parsed = output.split(registryDivider);
+    project.ext.arma3dir = parsed[parsed.length-1].trim();
+    found = true
+  }
+
+  if (!found) {
+    throw new GradleException("Arma 3 directory could not be found")
+  }
+}
+
 task runAutotest << {
-  String armaExecutable = "${armaDir}/arma3.exe"
+  String armaExecutable = "${project.ext.arma3dir}/arma3.exe"
   String autotestFilePath = new File(autotestFile).getAbsolutePath()
   String autotest = "-autotest=${autotestFilePath}"
   String mods = "-mod=${armaMods.join(';')}"
@@ -59,3 +103,4 @@ task runAutotest << {
 }
 runAutotest.dependsOn(setupTestMission)
 runAutotest.dependsOn(generateAutotestFile)
+runAutotest.dependsOn(locateArma3)
