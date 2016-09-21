@@ -99,8 +99,9 @@ task locateArma3 << {
 }
 
 task downloadSFP << {
-  delete 'archive'
-  delete 'archive.zip'
+  mkdir 'tmp'
+  delete 'tmp/archive'
+  delete 'tmp/archive.zip'
   download {
     src 'http://jenkins.anrop.se/job/sfp/lastSuccessfulBuild/artifact/*zip*/archive.zip'
     dest 'tmp'
