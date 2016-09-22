@@ -38,10 +38,15 @@ task cloneTestMission << {
 }
 
 task setupTestMission << {
-  def spawnSqf = new File("${missionDir}/mrg_objectDumper.sqf")
+  def spawnSqf = file("${missionDir}/mrg_objectDumper.sqf")
   spawnSqf.append('''
   endMission "END1";
   ''')
+
+  File initSqfFile = file("${missionDir}/init.sqf")
+  String initSqf = FileUtils.readFileToString(initSqfFile, "UTF-8")
+  initSqf = initSqf.replaceAll("_crew = 0", "_crew = 1")
+  FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
 }
 setupTestMission.dependsOn(cloneTestMission)
 
