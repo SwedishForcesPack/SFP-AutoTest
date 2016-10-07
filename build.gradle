@@ -22,6 +22,7 @@ def armaMods = [
 
 def armaObjectsMods = [
   '@cba_a3',
+  '@cup_terrains_core',
   '@sfp_objects_nightly',
 ]
 
@@ -63,7 +64,7 @@ task setupObjectsTestMission << {
 
   File initSqfFile = file("${missionDir}/init.sqf")
   String initSqf = FileUtils.readFileToString(initSqfFile, "UTF-8")
-  initSqf = initSqf.replaceAll("sfp", "Land_sfp")
+  initSqf = initSqf.replaceAll("sfp", "land_sfp")
   FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
 }
 setupObjectsTestMission.dependsOn(cloneTestMission)
