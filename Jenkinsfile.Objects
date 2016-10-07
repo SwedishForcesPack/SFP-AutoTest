@@ -1,0 +1,21 @@
+node ('arma') {
+  stage('Checkout from Git') {
+    checkout scm
+  }
+
+  stage('Download latest SFP Objects') {
+    bat 'gradlew downloadLatestSFPObjects'
+  }
+
+  stage('Run autotest') {
+    bat 'gradlew runObjectsAutotest'
+  }
+
+  stage('Copy Log File') {
+    bat 'gradlew copyLogFile'
+  }
+
+  stage('Archive Log File') {
+  	archiveArtifacts artifacts: 'logs/*.rpt'
+  }
+}

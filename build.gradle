@@ -20,6 +20,11 @@ def armaMods = [
   '@sfp_nightly',
 ]
 
+def armaObjectsMods = [
+  '@cba_a3',
+  '@sfp_objects_nightly',
+]
+
 def missionDir = 'mrg_objectDumper.VR'
 def missionRepo = 'https://github.com/SwedishForcesPack/mrg_objectDumper.VR.git'
 
@@ -49,6 +54,19 @@ task setupTestMission << {
   FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
 }
 setupTestMission.dependsOn(cloneTestMission)
+
+task setupObjectsTestMission << {
+  def spawnSqf = file("${missionDir}/mrg_objectDumper.sqf")
+  spawnSqf.append('''
+  endMission "END1";
+  ''')
+
+  File initSqfFile = file("${missionDir}/init.sqf")
+  String initSqf = FileUtils.readFileToString(initSqfFile, "UTF-8")
+  initSqf = initSqf.replaceAll("sfp", "Land_sfp")
+  FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
+}
+setupObjectsTestMission.dependsOn(cloneTestMission)
 
 task generateAutotestFile << {
   String missionPath = new File(missionDir).getAbsolutePath()
@@ -83,7 +101,7 @@ task locateArma3 << {
       }
     }
     catch (IOException e)
-    { 
+    {
     }
 
     String output = sw.toString();
@@ -115,7 +133,7 @@ task downloadSFP << {
 }
 
 task extractSFP(dependsOn: downloadSFP, type: Copy) {
-  outputs.upToDateWhen { false }  
+  outputs.upToDateWhen { false }
   from zipTree(file('tmp/archive.zip'))
   into file("tmp")
 }
@@ -128,6 +146,34 @@ task moveSFP(dependsOn: [extractSFP, locateArma3]) << {
 }
 
 task downloadLatestSFP(dependsOn: moveSFP) {
+
+}
+
+task downloadSFPObjects << {
+  delete 'tmp'
+  mkdir 'tmp'
+  delete 'tmp/archive'
+  delete 'tmp/archive.zip'
+  download {
+    src 'http://jenkins.anrop.se/job/sfp_objects/lastSuccessfulBuild/artifact/*zip*/archive.zip'
+    dest 'tmp'
+  }
+}
+
+task extractSFPObjects(dependsOn: downloadSFPObjects, type: Copy) {
+  outputs.upToDateWhen { false }
+  from zipTree(file('tmp/archive.zip'))
+  into file("tmp")
+}
+
+task moveSFPObjects(dependsOn: [extractSFPObjects, locateArma3]) << {
+  File source = file("tmp/archive/@sfp_objects")
+  File target = file("${project.ext.arma3dir}/@sfp_objects_nightly")
+  delete target
+  FileUtils.moveDirectory(source, target);
+}
+
+task downloadLatestSFPObjects(dependsOn: moveSFPObjects) {
 
 }
 
@@ -152,6 +198,27 @@ runAutotest.dependsOn(generateAutotestFile)
 runAutotest.dependsOn(locateArma3)
 runAutotest.mustRunAfter(downloadLatestSFP)
 
+task runObjectsAutotest << {
+  String armaExecutable = "${project.ext.arma3dir}/arma3.exe"
+  String autotestFilePath = new File(autotestFile).getAbsolutePath()
+  String autotest = "-autotest=${autotestFilePath}"
+  String mods = "-mod=${armaObjectsMods.join(';')}"
+
+  def pb = new ProcessBuilder([
+    armaExecutable,
+    autotest,
+    mods,
+    "-world=empty",
+    "-noPause",
+    "-noSplash",
+    "-window",
+  ]).start().waitFor()
+}
+runObjectsAutotest.dependsOn(setupObjectsTestMission)
+runObjectsAutotest.dependsOn(generateAutotestFile)
+runObjectsAutotest.dependsOn(locateArma3)
+runObjectsAutotest.mustRunAfter(downloadLatestSFPObjects)
+
 task copyLogFile << {
   def logsDir = 'logs'
   def localAppData = System.getenv('LOCALAPPDATA')
@@ -162,3 +229,4 @@ task copyLogFile << {
   FileUtils.copyFileToDirectory(source, file(logsDir))
 }
 copyLogFile.mustRunAfter(runAutotest)
+copyLogFile.mustRunAfter(runObjectsAutotest)
