@@ -20,13 +20,13 @@ task setupTestMission << {
 setupTestMission.dependsOn(cloneTestMission)
 
 task downloadSFPObjects << {
-  delete 'tmp'
-  mkdir 'tmp'
-  delete 'tmp/archive'
-  delete 'tmp/archive.zip'
+  delete file('tmp').getAbsolutePath()
+  mkdir file('tmp').getAbsolutePath()
+  delete file('tmp/archive').getAbsolutePath()
+  delete file('tmp/archive.zip').getAbsolutePath()
   download {
     src 'http://jenkins.anrop.se/job/sfp_objects/lastSuccessfulBuild/artifact/*zip*/archive.zip'
-    dest 'tmp'
+    dest file('tmp').getAbsolutePath()
   }
 }
 
