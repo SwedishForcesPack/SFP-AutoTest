@@ -15,219 +15,84 @@ plugins {
 
 import org.apache.commons.io.FileUtils;
 
-def armaMods = [
-  '@cba_a3',
-  '@sfp_nightly',
-]
+allprojects {
+  project.ext.missionDir = 'mrg_objectDumper.VR'
+  project.ext.autotestFile = 'autotest.cfg'
 
-def armaObjectsMods = [
-  '@cba_a3',
-  '@cup_terrains_core',
-  '@sfp_objects_nightly',
-]
+  task cloneTestMission << {
+    def missionRepo = 'https://github.com/SwedishForcesPack/mrg_objectDumper.VR.git'
 
-def missionDir = 'mrg_objectDumper.VR'
-def missionRepo = 'https://github.com/SwedishForcesPack/mrg_objectDumper.VR.git'
+    delete file(rootProject.missionDir).getAbsolutePath()
+    def grgit = org.ajoberstar.grgit.Grgit.clone(dir: file(rootProject.missionDir).getAbsolutePath(), uri: missionRepo)
+  }
 
-def autotestFile = 'autotest.cfg'
-
-def registryPaths = [
-  'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
-  'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
-  'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
-  'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
-]
-
-task cloneTestMission << {
-  delete missionDir
-  def grgit = org.ajoberstar.grgit.Grgit.clone(dir: missionDir, uri: missionRepo)
-}
-
-task setupTestMission << {
-  def spawnSqf = file("${missionDir}/mrg_objectDumper.sqf")
-  spawnSqf.append('''
-  endMission "END1";
-  ''')
-
-  File initSqfFile = file("${missionDir}/init.sqf")
-  String initSqf = FileUtils.readFileToString(initSqfFile, "UTF-8")
-  initSqf = initSqf.replaceAll("_crew = 0", "_crew = 1")
-  FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
-}
-setupTestMission.dependsOn(cloneTestMission)
-
-task setupObjectsTestMission << {
-  def spawnSqf = file("${missionDir}/mrg_objectDumper.sqf")
-  spawnSqf.append('''
-  endMission "END1";
-  ''')
-
-  File initSqfFile = file("${missionDir}/init.sqf")
-  String initSqf = FileUtils.readFileToString(initSqfFile, "UTF-8")
-  initSqf = initSqf.replaceAll("sfp", "land_sfp")
-  FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
-}
-setupObjectsTestMission.dependsOn(cloneTestMission)
-
-task generateAutotestFile << {
-  String missionPath = new File(missionDir).getAbsolutePath()
-  String fileContent = """
-  class TestMissions
-  {
-    class TestCase01
+  task generateAutotestFile << {
+    String missionPath = file(rootProject.missionDir).getAbsolutePath()
+    String fileContent = """
+    class TestMissions
     {
-      campaign = \"\";
-      mission = \"${missionPath}\";
+      class TestCase01
+      {
+        campaign = \"\";
+        mission = \"${missionPath}\";
+      };
     };
-  };
-  """.stripIndent()
-  new File(autotestFile).write(fileContent)
-}
+    """.stripIndent()
+    new File(rootProject.autotestFile).write(fileContent)
+  }
 
-task locateArma3 << {
-  def found = false;
-  def registryDivider = "    "
+  task locateArma3 << {
+    def registryPaths = [
+      'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
+      'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
+      'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
+      'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
+    ]
 
-  registryPaths.each { String query ->
-    Process process = Runtime.getRuntime().exec(query);
+    def found = false;
+    def registryDivider = "    "
 
-    InputStream is = process.getInputStream();
-    StringBuilder sw = new StringBuilder();
+    registryPaths.each { String query ->
+      Process process = Runtime.getRuntime().exec(query);
 
-    try
-    {
-      int c;
-      while ((c = is.read()) != -1) {
-        sw.append((char)c);
+      InputStream is = process.getInputStream();
+      StringBuilder sw = new StringBuilder();
+
+      try
+      {
+        int c;
+        while ((c = is.read()) != -1) {
+          sw.append((char)c);
+        }
       }
+      catch (IOException e)
+      {
+      }
+
+      String output = sw.toString();
+
+      if(!output.contains(registryDivider)) {
+        return null;
+      }
+
+      // Parse out the value
+      String[] parsed = output.split(registryDivider);
+      project.ext.arma3dir = parsed[parsed.length-1].trim();
+      found = true
     }
-    catch (IOException e)
-    {
+
+    if (!found) {
+      throw new GradleException("Arma 3 directory could not be found")
     }
-
-    String output = sw.toString();
-
-    if(!output.contains(registryDivider)) {
-      return null;
-    }
-
-    // Parse out the value
-    String[] parsed = output.split(registryDivider);
-    project.ext.arma3dir = parsed[parsed.length-1].trim();
-    found = true
   }
 
-  if (!found) {
-    throw new GradleException("Arma 3 directory could not be found")
+  task copyLogFile << {
+    def logsDir = 'logs'
+    def localAppData = System.getenv('LOCALAPPDATA')
+    def logFiles = file("${localAppData}/Arma 3").listFiles().findAll { it.name.startsWith('arma3_') && it.name.endsWith('.rpt') }
+    File source = logFiles.sort().last()
+    delete logsDir
+    mkdir logsDir
+    FileUtils.copyFileToDirectory(source, file(logsDir))
   }
 }
-
-task downloadSFP << {
-  delete 'tmp'
-  mkdir 'tmp'
-  delete 'tmp/archive'
-  delete 'tmp/archive.zip'
-  download {
-    src 'http://jenkins.anrop.se/job/sfp/lastSuccessfulBuild/artifact/*zip*/archive.zip'
-    dest 'tmp'
-  }
-}
-
-task extractSFP(dependsOn: downloadSFP, type: Copy) {
-  outputs.upToDateWhen { false }
-  from zipTree(file('tmp/archive.zip'))
-  into file("tmp")
-}
-
-task moveSFP(dependsOn: [extractSFP, locateArma3]) << {
-  File source = file("tmp/archive/@sfp")
-  File target = file("${project.ext.arma3dir}/@sfp_nightly")
-  delete target
-  FileUtils.moveDirectory(source, target);
-}
-
-task downloadLatestSFP(dependsOn: moveSFP) {
-
-}
-
-task downloadSFPObjects << {
-  delete 'tmp'
-  mkdir 'tmp'
-  delete 'tmp/archive'
-  delete 'tmp/archive.zip'
-  download {
-    src 'http://jenkins.anrop.se/job/sfp_objects/lastSuccessfulBuild/artifact/*zip*/archive.zip'
-    dest 'tmp'
-  }
-}
-
-task extractSFPObjects(dependsOn: downloadSFPObjects, type: Copy) {
-  outputs.upToDateWhen { false }
-  from zipTree(file('tmp/archive.zip'))
-  into file("tmp")
-}
-
-task moveSFPObjects(dependsOn: [extractSFPObjects, locateArma3]) << {
-  File source = file("tmp/archive/@sfp_objects")
-  File target = file("${project.ext.arma3dir}/@sfp_objects_nightly")
-  delete target
-  FileUtils.moveDirectory(source, target);
-}
-
-task downloadLatestSFPObjects(dependsOn: moveSFPObjects) {
-
-}
-
-task runAutotest << {
-  String armaExecutable = "${project.ext.arma3dir}/arma3.exe"
-  String autotestFilePath = new File(autotestFile).getAbsolutePath()
-  String autotest = "-autotest=${autotestFilePath}"
-  String mods = "-mod=${armaMods.join(';')}"
-
-  def pb = new ProcessBuilder([
-    armaExecutable,
-    autotest,
-    mods,
-    "-world=empty",
-    "-noPause",
-    "-noSplash",
-    "-window",
-  ]).start().waitFor()
-}
-runAutotest.dependsOn(setupTestMission)
-runAutotest.dependsOn(generateAutotestFile)
-runAutotest.dependsOn(locateArma3)
-runAutotest.mustRunAfter(downloadLatestSFP)
-
-task runObjectsAutotest << {
-  String armaExecutable = "${project.ext.arma3dir}/arma3.exe"
-  String autotestFilePath = new File(autotestFile).getAbsolutePath()
-  String autotest = "-autotest=${autotestFilePath}"
-  String mods = "-mod=${armaObjectsMods.join(';')}"
-
-  def pb = new ProcessBuilder([
-    armaExecutable,
-    autotest,
-    mods,
-    "-world=empty",
-    "-noPause",
-    "-noSplash",
-    "-window",
-  ]).start().waitFor()
-}
-runObjectsAutotest.dependsOn(setupObjectsTestMission)
-runObjectsAutotest.dependsOn(generateAutotestFile)
-runObjectsAutotest.dependsOn(locateArma3)
-runObjectsAutotest.mustRunAfter(downloadLatestSFPObjects)
-
-task copyLogFile << {
-  def logsDir = 'logs'
-  def localAppData = System.getenv('LOCALAPPDATA')
-  def logFiles = file("${localAppData}/Arma 3").listFiles().findAll { it.name.startsWith('arma3_') && it.name.endsWith('.rpt') }
-  File source = logFiles.sort().last()
-  delete logsDir
-  mkdir logsDir
-  FileUtils.copyFileToDirectory(source, file(logsDir))
-}
-copyLogFile.mustRunAfter(runAutotest)
-copyLogFile.mustRunAfter(runObjectsAutotest)

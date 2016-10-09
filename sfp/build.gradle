@@ -1,0 +1,68 @@
+import org.apache.commons.io.FileUtils;
+
+def armaMods = [
+  '@cba_a3',
+  '@sfp_nightly',
+]
+
+task setupTestMission << {
+  def spawnSqf = file("${rootProject.missionDir}/mrg_objectDumper.sqf")
+  spawnSqf.append('''
+  endMission "END1";
+  ''')
+
+  File initSqfFile = file("${rootProject.missionDir}/init.sqf")
+  String initSqf = FileUtils.readFileToString(initSqfFile, "UTF-8")
+  initSqf = initSqf.replaceAll("_crew = 0", "_crew = 1")
+  FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
+}
+setupTestMission.dependsOn(cloneTestMission)
+
+task downloadSFP << {
+  delete 'tmp'
+  mkdir 'tmp'
+  delete 'tmp/archive'
+  delete 'tmp/archive.zip'
+  download {
+    src 'http://jenkins.anrop.se/job/sfp/lastSuccessfulBuild/artifact/*zip*/archive.zip'
+    dest 'tmp'
+  }
+}
+
+task extractSFP(dependsOn: downloadSFP, type: Copy) {
+  outputs.upToDateWhen { false }
+  from zipTree(file('tmp/archive.zip'))
+  into file("tmp")
+}
+
+task moveSFP(dependsOn: [extractSFP, locateArma3]) << {
+  File source = file("tmp/archive/@sfp")
+  File target = file("${project.ext.arma3dir}/@sfp_nightly")
+  delete target
+  FileUtils.moveDirectory(source, target);
+}
+
+task downloadLatestSFP(dependsOn: moveSFP) {
+
+}
+
+task runAutotest << {
+  String armaExecutable = "${project.ext.arma3dir}/arma3.exe"
+  String autotestFilePath = new File(rootProject.autotestFile).getAbsolutePath()
+  String autotest = "-autotest=${autotestFilePath}"
+  String mods = "-mod=${armaMods.join(';')}"
+
+  def pb = new ProcessBuilder([
+    armaExecutable,
+    autotest,
+    mods,
+    "-world=empty",
+    "-noPause",
+    "-noSplash",
+    "-window",
+  ]).start().waitFor()
+}
+runAutotest.dependsOn(setupTestMission)
+runAutotest.dependsOn(generateAutotestFile)
+runAutotest.dependsOn(locateArma3)
+runAutotest.mustRunAfter(downloadLatestSFP)

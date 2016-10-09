@@ -4,11 +4,11 @@ node ('arma') {
   }
 
   stage('Download latest SFP') {
-    bat 'gradlew downloadLatestSFP'
+    bat 'gradlew sfp:downloadLatestSFP'
   }
 
   stage('Run autotest') {
-    bat 'gradlew runAutotest'
+    bat 'gradlew sfp:runAutotest'
   }
 
   stage('Copy Log File') {
