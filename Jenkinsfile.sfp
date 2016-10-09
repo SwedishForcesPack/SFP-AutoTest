@@ -4,7 +4,7 @@ node ('arma') {
   }
 
   stage('Download latest SFP') {
-    bat 'gradlew sfp:downloadLatestSFP'
+    bat 'gradlew sfp:downloadMod'
   }
 
   stage('Run autotest') {
@@ -12,10 +12,10 @@ node ('arma') {
   }
 
   stage('Copy Log File') {
-    bat 'gradlew copyLogFile'
+    bat 'gradlew sfp:copyLogFile'
   }
 
   stage('Archive Log File') {
-  	archiveArtifacts artifacts: 'logs/*.rpt'
+  	archiveArtifacts artifacts: 'sfp/logs/*.rpt'
   }
 }

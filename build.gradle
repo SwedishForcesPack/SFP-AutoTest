@@ -15,19 +15,18 @@ plugins {
 
 import org.apache.commons.io.FileUtils;
 
-allprojects {
-  project.ext.missionDir = 'mrg_objectDumper.VR'
+subprojects {
   project.ext.autotestFile = 'autotest.cfg'
 
-  task cloneTestMission << {
+  task cloneObjectDumperTestMission << {
     def missionRepo = 'https://github.com/SwedishForcesPack/mrg_objectDumper.VR.git'
 
-    delete file(rootProject.missionDir).getAbsolutePath()
-    def grgit = org.ajoberstar.grgit.Grgit.clone(dir: file(rootProject.missionDir).getAbsolutePath(), uri: missionRepo)
+    delete file(missionDir).getAbsolutePath()
+    def grgit = org.ajoberstar.grgit.Grgit.clone(dir: file(missionDir).getAbsolutePath(), uri: missionRepo)
   }
 
   task generateAutotestFile << {
-    String missionPath = file(rootProject.missionDir).getAbsolutePath()
+    String missionPath = file(missionDir).getAbsolutePath()
     String fileContent = """
     class TestMissions
     {
@@ -38,7 +37,7 @@ allprojects {
       };
     };
     """.stripIndent()
-    new File(rootProject.autotestFile).write(fileContent)
+    new File(autotestFile).write(fileContent)
   }
 
   task locateArma3 << {
@@ -86,13 +85,61 @@ allprojects {
     }
   }
 
+  task downloadModFromJenkins << {
+    delete file('tmp').getAbsolutePath()
+    mkdir file('tmp').getAbsolutePath()
+    delete file('tmp/archive').getAbsolutePath()
+    delete file('tmp/archive.zip').getAbsolutePath()
+    download {
+      src "http://jenkins.anrop.se/job/${mod}/lastSuccessfulBuild/artifact/*zip*/archive.zip"
+      dest file('tmp').getAbsolutePath()
+    }
+  }
+
+  task extractMod(dependsOn: downloadModFromJenkins, type: Copy) {
+    outputs.upToDateWhen { false }
+    from zipTree(file('tmp/archive.zip'))
+    into file("tmp")
+  }
+
+  task moveMod(dependsOn: [extractMod, locateArma3]) << {
+    File source = file("tmp/archive/@${mod}")
+    File target = file("${arma3dir}/@${mod}_nightly")
+    delete target
+    FileUtils.moveDirectory(source, target);
+  }
+
+  task downloadMod(dependsOn: moveMod) {
+
+  }
+
+  task runAutotest << {
+    String armaExecutable = "${arma3dir}/arma3.exe"
+    String autotestFilePath = new File(autotestFile).getAbsolutePath()
+    String autotest = "-autotest=${autotestFilePath}"
+    String mods = "-mod=${mods.join(';')}"
+
+    def pb = new ProcessBuilder([
+      armaExecutable,
+      autotest,
+      mods,
+      "-world=empty",
+      "-noPause",
+      "-noSplash",
+      "-window",
+    ]).start().waitFor()
+  }
+  runAutotest.dependsOn(generateAutotestFile)
+  runAutotest.dependsOn(locateArma3)
+  runAutotest.mustRunAfter(downloadMod)
+
   task copyLogFile << {
-    def logsDir = 'logs'
+    def logsDir = file('logs')
     def localAppData = System.getenv('LOCALAPPDATA')
     def logFiles = file("${localAppData}/Arma 3").listFiles().findAll { it.name.startsWith('arma3_') && it.name.endsWith('.rpt') }
     File source = logFiles.sort().last()
     delete logsDir
     mkdir logsDir
-    FileUtils.copyFileToDirectory(source, file(logsDir))
+    FileUtils.copyFileToDirectory(source, logsDir)
   }
 }
