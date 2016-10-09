@@ -7,7 +7,7 @@ node ('arma') {
     bat 'gradlew sfp_objects:downloadMod'
   }
 
-  stage('Download latest SFP Björkfors') {
+  stage('Download latest SFP Bjorkfors') {
     bat 'gradlew sfp_bjorkfors:downloadMod'
   }
 
