@@ -1,2 +1,7 @@
 include ":sfp"
+include ":sfp_bjorkfors"
 include ":sfp_objects"
+include ":sfp_roso"
+include ":sfp_slattakra"
+include ":sfp_sturko"
+include ":sfp_wamako"

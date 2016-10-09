@@ -1,0 +1,21 @@
+node ('arma') {
+  stage('Checkout from Git') {
+    checkout scm
+  }
+
+  stage('Download latest SFP Wamako') {
+    bat 'gradlew sfp_wamako:downloadMod'
+  }
+
+  stage('Run autotest') {
+    bat 'gradlew sfp_wamako:runAutotest'
+  }
+
+  stage('Copy Log File') {
+    bat 'gradlew sfp_wamako:copyLogFile'
+  }
+
+  stage('Archive Log File') {
+  	archiveArtifacts artifacts: 'sfp_wamako/logs/*.rpt'
+  }
+}

@@ -1,0 +1,11 @@
+project.ext.missionDir = 'sfp_island_auto_test.sfp_bjorkfors'
+project.ext.mod = 'sfp_bjorkfors'
+project.ext.mods = [
+  '@cba_a3',
+  '@cup_terrains_core',
+  '@sfp_bjorkfors_nightly',
+  '@sfp_objects_nightly',
+]
+
+runAutotest.dependsOn(cloneIslandTestMission)
+runAutotest.mustRunAfter(':sfp_objects:downloadMod')

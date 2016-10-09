@@ -18,6 +18,13 @@ import org.apache.commons.io.FileUtils;
 subprojects {
   project.ext.autotestFile = 'autotest.cfg'
 
+  task cloneIslandTestMission << {
+    def missionRepo = 'https://github.com/SwedishForcesPack/sfp_island_auto_test.VR.git'
+
+    delete file(missionDir).getAbsolutePath()
+    def grgit = org.ajoberstar.grgit.Grgit.clone(dir: file(missionDir).getAbsolutePath(), uri: missionRepo)
+  }
+
   task cloneObjectDumperTestMission << {
     def missionRepo = 'https://github.com/SwedishForcesPack/mrg_objectDumper.VR.git'
 
