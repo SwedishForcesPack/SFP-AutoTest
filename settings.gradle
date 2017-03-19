@@ -1,3 +1,4 @@
+include ":ffp"
 include ":sfp"
 include ":sfp_bjorkfors"
 include ":sfp_objects"

@@ -1,0 +1,25 @@
+import org.apache.commons.io.FileUtils;
+
+project.ext.missionDir = 'mrg_objectDumper.VR'
+project.ext.mod = 'ffp'
+project.ext.mods = [
+  '@cba_a3',
+  '@ffp_nightly',
+  '@sfp_nightly',
+]
+
+task setupTestMission << {
+  def spawnSqf = file("${missionDir}/mrg_objectDumper.sqf")
+  spawnSqf.append('''
+  endMission "END1";
+  ''')
+
+  File initSqfFile = file("${missionDir}/init.sqf")
+  String initSqf = FileUtils.readFileToString(initSqfFile, "UTF-8")
+  initSqf = initSqf.replaceAll("sfp", "ffp")
+  initSqf = initSqf.replaceAll("_crew = 0", "_crew = 1")
+  FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
+}
+setupTestMission.dependsOn(cloneObjectDumperTestMission)
+
+runAutotest.dependsOn(setupTestMission)

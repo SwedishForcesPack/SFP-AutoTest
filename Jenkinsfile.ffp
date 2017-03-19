@@ -1,0 +1,21 @@
+node ('arma') {
+  stage('Checkout from Git') {
+    checkout scm
+  }
+
+  stage('Download latest FFP') {
+    bat 'gradlew ffp:downloadMod'
+  }
+
+  stage('Run autotest') {
+    bat 'gradlew ffp:runAutotest'
+  }
+
+  stage('Copy Log File') {
+    bat 'gradlew ffp:copyLogFile'
+  }
+
+  stage('Archive Log File') {
+  	archiveArtifacts artifacts: 'ffp/logs/*.rpt'
+  }
+}
