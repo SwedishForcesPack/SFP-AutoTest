@@ -1,11 +1,9 @@
 project.ext.missionDir = 'sfp_island_auto_test.sfp_sturko'
 project.ext.mod = 'sfp_sturko'
 project.ext.mods = [
-  '@cba_a3',
-  '@cup_terrains_core',
-  '@sfp_objects_nightly',
-  '@sfp_sturko_nightly',
+  '583496184', // CUP Terrains Core
+  '894415058', // SFP Objects Nightly
+  '894420263', // SFP Sturkö Nightly
 ]
 
 runAutotest.dependsOn(cloneIslandTestMission)
-runAutotest.mustRunAfter(':sfp_objects:downloadMod')

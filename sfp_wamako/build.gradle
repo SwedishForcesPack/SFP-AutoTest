@@ -1,9 +1,8 @@
 project.ext.missionDir = 'sfp_island_auto_test.sfp_wamako'
 project.ext.mod = 'sfp_wamako'
 project.ext.mods = [
-  '@cba_a3',
-  '@cup_terrains_core',
-  '@sfp_wamako_nightly',
+  '583496184', // CUP Terrains Core
+  '894420555', // SFP Wamako Nightly
 ]
 
 runAutotest.dependsOn(cloneIslandTestMission)
