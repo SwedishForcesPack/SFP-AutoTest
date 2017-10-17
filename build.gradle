@@ -13,7 +13,68 @@ plugins {
   id 'de.undercouch.download' version '3.1.1'
 }
 
+import java.nio.file.Paths;
 import org.apache.commons.io.FileUtils;
+import org.gradle.internal.os.OperatingSystem;
+
+task locateArma3 << {
+  def registryPaths = [
+    'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
+    'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
+    'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
+    'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
+  ]
+
+  def found = false;
+  def registryDivider = "    "
+
+  registryPaths.each { String query ->
+    Process process = Runtime.getRuntime().exec(query);
+
+    InputStream is = process.getInputStream();
+    StringBuilder sw = new StringBuilder();
+
+    try
+    {
+      int c;
+      while ((c = is.read()) != -1) {
+        sw.append((char)c);
+      }
+    }
+    catch (IOException e)
+    {
+    }
+
+    String output = sw.toString();
+
+    if(!output.contains(registryDivider)) {
+      return null;
+    }
+
+    // Parse out the value
+    String[] parsed = output.split(registryDivider);
+    project.ext.arma3dir = parsed[parsed.length-1].trim();
+    found = true
+  }
+
+  if (!found) {
+    throw new GradleException("Arma 3 directory could not be found")
+  }
+}
+
+task installSteamCmd {
+  outputs.upToDateWhen { false }
+
+  doLast {
+    String npm = OperatingSystem.current().isWindows() ? "npm.cmd" : "npm"
+    def pb = new ProcessBuilder([
+      npm,
+      "install",
+      "-g",
+      "https://github.com/Dahlgren/node-steamcmd"
+    ]).start().waitFor()
+  }
+}
 
 subprojects {
   project.ext.autotestFile = 'autotest.cfg'
@@ -47,106 +108,68 @@ subprojects {
     new File(autotestFile).write(fileContent)
   }
 
-  task locateArma3 << {
-    def registryPaths = [
-      'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
-      'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive Studio\\ArmA 3" /v "MAIN"',
-      'REG QUERY "HKLM\\SOFTWARE\\Wow6432Node\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
-      'REG QUERY "HKLM\\SOFTWARE\\Bohemia Interactive\\ArmA 3" /v "MAIN"',
-    ]
-
-    def found = false;
-    def registryDivider = "    "
-
-    registryPaths.each { String query ->
-      Process process = Runtime.getRuntime().exec(query);
-
-      InputStream is = process.getInputStream();
-      StringBuilder sw = new StringBuilder();
-
-      try
-      {
-        int c;
-        while ((c = is.read()) != -1) {
-          sw.append((char)c);
-        }
-      }
-      catch (IOException e)
-      {
-      }
-
-      String output = sw.toString();
-
-      if(!output.contains(registryDivider)) {
-        return null;
-      }
-
-      // Parse out the value
-      String[] parsed = output.split(registryDivider);
-      project.ext.arma3dir = parsed[parsed.length-1].trim();
-      found = true
-    }
-
-    if (!found) {
-      throw new GradleException("Arma 3 directory could not be found")
-    }
-  }
-
-  task downloadModFromJenkins << {
-    delete file('tmp').getAbsolutePath()
-    mkdir file('tmp').getAbsolutePath()
-    delete file('tmp/archive').getAbsolutePath()
-    delete file('tmp/archive.zip').getAbsolutePath()
-    download {
-      src "http://jenkins.anrop.se/job/${mod}/lastSuccessfulBuild/artifact/*zip*/archive.zip"
-      dest file('tmp').getAbsolutePath()
-    }
-  }
-
-  task extractMod(dependsOn: downloadModFromJenkins, type: Copy) {
+  task downloadMods(dependsOn: installSteamCmd) {
     outputs.upToDateWhen { false }
-    from zipTree(file('tmp/archive.zip'))
-    into file("tmp")
+
+    doLast {
+      mods.each { String mod ->
+        String steamCmd = OperatingSystem.current().isWindows() ? "steamcmd.cmd" : "steamcmd"
+        String username = System.getenv('STEAM_USERNAME')
+        String password = System.getenv('STEAM_PASSWORD')
+        String path = Paths.get(System.getProperty('user.home'), "workshop")
+
+        def args = [
+          steamCmd,
+          "--username",
+          username,
+          "--password",
+          password,
+          "--path",
+          path,
+          "107410",
+          mod
+        ]
+        def pb = new ProcessBuilder(args).start().waitFor()
+      }
+    }
   }
 
-  task moveMod(dependsOn: [extractMod, locateArma3]) << {
-    File source = file("tmp/archive/@${mod}")
-    File target = file("${arma3dir}/@${mod}_nightly")
-    delete target
-    FileUtils.moveDirectory(source, target);
-  }
+  task runAutotest {
+    ext {
+      getModPath = { mod ->
+        return Paths.get(System.getProperty('user.home'), "workshop", "steamapps", "workshop", "content", "107410", mod)
+      }
+    }
 
-  task downloadMod(dependsOn: moveMod) {
+    doLast {
+      String armaExecutable = "${arma3dir}/arma3.exe"
+      String autotestFilePath = new File(autotestFile).getAbsolutePath()
+      String autotest = "-autotest=${autotestFilePath}"
+      String mods = "-mod=${mods.collect(getModPath).join(';')}"
 
-  }
-
-  task runAutotest << {
-    String armaExecutable = "${arma3dir}/arma3.exe"
-    String autotestFilePath = new File(autotestFile).getAbsolutePath()
-    String autotest = "-autotest=${autotestFilePath}"
-    String mods = "-mod=${mods.join(';')}"
-
-    def pb = new ProcessBuilder([
-      armaExecutable,
-      autotest,
-      mods,
-      "-world=empty",
-      "-noPause",
-      "-noSplash",
-      "-window",
-    ]).start().waitFor()
+      def pb = new ProcessBuilder([
+        armaExecutable,
+        autotest,
+        mods,
+        "-world=empty",
+        "-noPause",
+        "-noSplash",
+        "-window",
+      ]).start().waitFor()
+    }
   }
   runAutotest.dependsOn(generateAutotestFile)
   runAutotest.dependsOn(locateArma3)
-  runAutotest.mustRunAfter(downloadMod)
+  runAutotest.mustRunAfter(downloadMods)
 
-  task copyLogFile << {
+  task moveLogFile << {
     def logsDir = file('logs')
     def localAppData = System.getenv('LOCALAPPDATA')
     def logFiles = file("${localAppData}/Arma 3").listFiles().findAll { it.name.startsWith('arma3_') && it.name.endsWith('.rpt') }
     File source = logFiles.sort().last()
+    File destination = file(Paths.get(logsDir.getAbsolutePath(), "${mod}.rpt").toString())
     delete logsDir
     mkdir logsDir
-    FileUtils.copyFileToDirectory(source, logsDir)
+    FileUtils.moveFile(source, destination)
   }
 }

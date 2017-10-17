@@ -3,9 +3,9 @@ import org.apache.commons.io.FileUtils;
 project.ext.missionDir = 'mrg_objectDumper.VR'
 project.ext.mod = 'ffp'
 project.ext.mods = [
-  '@cba_a3',
-  '@ffp_nightly',
-  '@sfp_nightly',
+  '450814997', // CBA_A3
+  '894417096', // FFP Nightly
+  '894406277', // SFP Nightly
 ]
 
 task setupTestMission << {
