@@ -43,6 +43,36 @@ pipeline {
                         runForMod('sfp_objects')
                     }
                 }
+
+                stage('SFP Roso') {
+                    agent {
+                        label 'arma'
+                    }
+
+                    steps {
+                        runForMod('sfp_roso')
+                    }
+                }
+
+                stage('SFP Sturko') {
+                    agent {
+                        label 'arma'
+                    }
+
+                    steps {
+                        runForMod('sfp_sturko')
+                    }
+                }
+
+                stage('SFP Wamako') {
+                    agent {
+                        label 'arma'
+                    }
+
+                    steps {
+                        runForMod('sfp_wamako')
+                    }
+                }
             }
         }
     }
