@@ -1,5 +1,11 @@
+String nightlyBuild = BRANCH_NAME == 'master' ? '0 4 * * *' : ''
+
 pipeline {
     agent none
+
+    triggers {
+        cron(nightlyBuild)
+    }
 
     options {
         skipDefaultCheckout()
