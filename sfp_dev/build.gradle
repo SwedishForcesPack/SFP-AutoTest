@@ -1,10 +1,11 @@
 import org.apache.commons.io.FileUtils;
 
 project.ext.missionDir = 'mrg_objectDumper.VR'
-project.ext.mod = 'sfp_objects'
+project.ext.mod = 'sfp_dev'
 project.ext.mods = [
-  '583496184', // CUP Terrains Core
-  '894415058', // SFP Objects Nightly
+  '450814997', // CBA_A3
+  '894406277', // SFP Nightly
+  '927644625', // SFP Dev Nightly
 ]
 
 task setupTestMission << {
@@ -15,7 +16,8 @@ task setupTestMission << {
 
   File initSqfFile = file("${missionDir}/init.sqf")
   String initSqf = FileUtils.readFileToString(initSqfFile, "UTF-8")
-  initSqf = initSqf.replaceAll("@sfp", "894415058")
+  initSqf = initSqf.replaceAll("@sfp", "927644625")
+  initSqf = initSqf.replaceAll("_crew = 0", "_crew = 1")
   FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
 }
 setupTestMission.dependsOn(cloneObjectDumperTestMission)

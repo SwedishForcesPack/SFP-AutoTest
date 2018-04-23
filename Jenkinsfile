@@ -40,6 +40,26 @@ pipeline {
                     }
                 }
 
+                stage('SFP Congo') {
+                    agent {
+                        label 'arma'
+                    }
+
+                    steps {
+                        runForMod('sfp_congo')
+                    }
+                }
+
+                stage('SFP Dev') {
+                    agent {
+                        label 'arma'
+                    }
+
+                    steps {
+                        runForMod('sfp_dev')
+                    }
+                }
+
                 stage('SFP Objects') {
                     agent {
                         label 'arma'
