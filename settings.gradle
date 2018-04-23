@@ -1,6 +1,8 @@
 include ":ffp"
 include ":sfp"
 include ":sfp_bjorkfors"
+include ":sfp_congo"
+include ":sfp_dev"
 include ":sfp_objects"
 include ":sfp_roso"
 include ":sfp_slattakra"

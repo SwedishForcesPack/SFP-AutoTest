@@ -15,6 +15,7 @@ task setupTestMission << {
 
   File initSqfFile = file("${missionDir}/init.sqf")
   String initSqf = FileUtils.readFileToString(initSqfFile, "UTF-8")
+  initSqf = initSqf.replaceAll("@sfp", "894406277")
   initSqf = initSqf.replaceAll("_crew = 0", "_crew = 1")
   FileUtils.writeStringToFile(initSqfFile, initSqf, "UTF-8")
 }
