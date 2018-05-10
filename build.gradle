@@ -15,7 +15,6 @@ plugins {
 
 import java.nio.file.Paths;
 import org.apache.commons.io.FileUtils;
-import org.gradle.internal.os.OperatingSystem;
 
 task locateArma3 << {
   def registryPaths = [
@@ -62,20 +61,6 @@ task locateArma3 << {
   }
 }
 
-task installSteamCmd {
-  outputs.upToDateWhen { false }
-
-  doLast {
-    String npm = OperatingSystem.current().isWindows() ? "npm.cmd" : "npm"
-    def pb = new ProcessBuilder([
-      npm,
-      "install",
-      "-g",
-      "https://github.com/Dahlgren/node-steamcmd"
-    ]).start().waitFor()
-  }
-}
-
 subprojects {
   project.ext.autotestFile = 'autotest.cfg'
 
@@ -108,28 +93,16 @@ subprojects {
     new File(autotestFile).write(fileContent)
   }
 
-  task downloadMods(dependsOn: installSteamCmd) {
+  task downloadMods() {
     outputs.upToDateWhen { false }
 
     doLast {
-      mods.each { String mod ->
-        String steamCmd = OperatingSystem.current().isWindows() ? "steamcmd.cmd" : "steamcmd"
-        String username = System.getenv('STEAM_USERNAME')
-        String password = System.getenv('STEAM_PASSWORD')
-        String path = Paths.get(System.getProperty('user.home'), "workshop")
+      def args = ["SteamWorkshop.exe", "--priority", "107410"] + mods
+      def process = new ProcessBuilder(args).inheritIO().start()
+      process.waitFor()
 
-        def args = [
-          steamCmd,
-          "--username",
-          username,
-          "--password",
-          password,
-          "--path",
-          path,
-          "107410",
-          mod
-        ]
-        def pb = new ProcessBuilder(args).start().waitFor()
+      if (process.exitValue() > 0) {
+        throw new GradleException("Steam Workshop download failed")
       }
     }
   }
@@ -137,7 +110,7 @@ subprojects {
   task runAutotest {
     ext {
       getModPath = { mod ->
-        return Paths.get(System.getProperty('user.home'), "workshop", "steamapps", "workshop", "content", "107410", mod)
+        return Paths.get(arma3dir, "..", "..", "workshop", "content", "107410", mod).normalize()
       }
     }
 
