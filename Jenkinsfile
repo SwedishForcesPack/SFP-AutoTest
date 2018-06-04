@@ -40,6 +40,16 @@ pipeline {
                     }
                 }
 
+                stage('NFP') {
+                    agent {
+                        label 'arma'
+                    }
+
+                    steps {
+                        runForMod('nfp')
+                    }
+                }
+
                 stage('SFP Congo') {
                     agent {
                         label 'arma'
